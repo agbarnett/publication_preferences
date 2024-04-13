@@ -1,0 +1,78 @@
+---
+title: "Summary of the focus groups (surveys)"
+author: "Adrian Barnett"
+date: "2023-08-11"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, error=FALSE, comment='', dpi=400)
+options(width=1000) # Wide pages
+library(ggplot2)
+library(dplyr)
+library(flextable)
+library(janitor)
+library(pander)
+panderOptions('table.emphasize.rownames', FALSE)
+panderOptions('table.split.table', Inf)
+
+# data from 0_read_focus_groups.R
+load('data/0_focus_groups_survey.RData')
+```
+
+The focus groups were conducted on the 1st and 11th of August 2023.
+
+## Gender
+
+```{r}
+tab = tabyl(dat = survey, q1_1) %>%
+  mutate(percent = round(percent*100))
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  autofit()
+ftab
+```
+## Area of research
+
+```{r}
+tab = tabyl(dat = survey, q2_1) %>%
+  mutate(percent = round(percent*100))
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  autofit()
+ftab
+```
+
+## Employer
+
+```{r, result='asis'}
+pandoc.list(survey$q1_2)
+```
+
+## How many years have you worked in research? 
+
+```{r}
+tab = summarise(survey, 
+          n = n(), 
+          min = round(min(q2_2)), 
+          median = round(median(q2_2)),
+          max = round(max(q2_2)))
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  autofit()
+ftab
+```
+
+## How many peer-reviewed journal publications do you have?
+
+```{r}
+tab = summarise(survey, 
+          n = n(), 
+          min = min(q2_3), 
+          median = round(median(q2_3)),
+          max = max(q2_3))
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  autofit()
+ftab
+```

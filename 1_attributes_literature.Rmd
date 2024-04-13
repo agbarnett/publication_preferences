@@ -1,0 +1,111 @@
+---
+title: "Summary of attributes from the literature review"
+author: "Adrian Barnett"
+date: "2023-01-31"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, error=FALSE, comment='', dpi=400)
+options(width=1000) # Wide pages
+options(scipen=999) # avoid scientific presentation
+library(ggplot2)
+library(dplyr)
+library(flextable)
+library(stringr)
+
+# get data
+load('data/0_literature.RData') # from 0_read_google_sheet.R
+n_studies = length(unique(long$author))
+n_attributes = length(unique(long$attribute))
+```
+
+There were `r n_studies` included in this stage of the literature review. They examined `r n_attributes` attributes.
+
+# Frequencies by category
+
+The table below shows the number of attributes mentioned in each category.
+
+```{r}
+tab = group_by(long, group) %>%
+  summarise(n = sum(value)) %>%
+  ungroup() %>%
+  arrange(-n)
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  autofit()
+ftab
+```
+
+# Frequencies by attribute
+
+The table below shows the top ten attributes.
+
+```{r}
+stats = group_by(long, attribute) %>%
+  summarise(n = sum(value)) %>%
+  ungroup() 
+tab = arrange(stats, -n) %>%
+  slice(1:10)
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  autofit()
+ftab
+#
+n_zero = filter(stats, n==0) %>% nrow()
+```
+
+
+There were `r n_zero` attributes that were never mentioned, these were:
+
+```{r, results='asis'}
+zero = filter(stats, n==0)
+for (k in 1:nrow(zero)){
+  cat('* ', zero$attribute[k], '\n', sep='')
+}
+```
+
+# Frequencies by paper
+
+```{r}
+stats = group_by(long, author) %>%
+  summarise(n = sum(value)) %>%
+  ungroup() 
+tab = summarise(stats,
+                min = min(n),
+                q1 = round(quantile(n,0.25)),
+            median = round(median(n)),
+            q3 = round(quantile(n,0.75)),
+            max = max(n))
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  autofit()
+ftab
+#
+n_zero = filter(stats, n==0) %>% nrow()
+```
+
+The table shows summary statistics on the number of attributes mentioned per paper.
+There were `r n_zero` papers with no attributes.
+
+# Tile plot
+
+Below is a tile plot showing the attributes mentioned by each paper. The results are grouped by the six categories.
+
+```{r, fig.width=9, fig.height=11}
+#
+long = mutate(long, author = str_replace_all(author, '_', ' '))
+#
+tile = ggplot(data = long, aes(y=attribute, x=author, fill=value, alpha = group))+
+  geom_tile()+
+  scale_fill_manual(NULL, values=c('beige','dark red'))+
+  theme_minimal()+
+  theme(legend.position = 'none',
+        axis.text.x = element_text(angle=45, hjust=1, size = 5))+
+  facet_grid(rows = vars(group), scales = "free", space = "free") +
+  xlab('')+
+  ylab('')
+tile
+ggsave(filename = 'figures/literature_review.jpg', device = 'jpeg', plot = tile, units = 'in', width=9, height=12, dpi=400)
+ggsave(filename = 'figures/literature_review.eps', device = 'eps', plot = tile, width=9, height=12) # for protocol
+```

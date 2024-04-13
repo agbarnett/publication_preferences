@@ -1,0 +1,105 @@
+---
+title: "Summary of the pilot data collection"
+author: "Adrian Barnett"
+date: "2023-06-23"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, error=FALSE, comment='', dpi=400)
+options(width=1000) # Wide pages
+options(scipen=999) # avoid scientific presentation
+library(ggplot2)
+library(dplyr)
+library(flextable)
+library(tidyr)
+library(stringr)
+
+# data from 0_read_pilot.R
+load('data/0_pilot.RData')
+```
+
+The pilot was conducted on 23 June 2023.
+
+The table below gives summary statistics on the time taken (in minutes) to complete the Qualtrics questions.
+
+```{r}
+both = bind_rows(text, ranks, .id = 'Stage')
+stats = group_by(both, Stage) %>%
+  select(Stage, duration) %>%
+   summarise(n =n(),
+             mean = mean(duration, na.rm=TRUE), 
+                min = min(duration, na.rm=TRUE),
+                max = max(duration, na.rm=TRUE)) %>%
+  mutate(Stage = ifelse(Stage == 1, 'First stage - text', 'Second stage - ranking'))
+ftab = flextable(stats) %>%
+  theme_box() %>%
+  colformat_double(j=3:5, digits=1) %>%
+  autofit() 
+ftab
+```
+
+## Stage 1 - attributes, free text 
+
+The table below shows the free text entered by the participants at stage 1. Rank 1 was the most important, and rank 10 the least important.
+
+The question was: "Write an ordered list of the up to 10 attributes you consider most important when submitting a journal article."
+
+Most people gave 10 attributes.
+
+```{r}
+text = rename(text,
+              'Rank 1' = "q1_13",
+              'Rank 2' = "q1_14",
+              'Rank 3' = "q1_15",
+              'Rank 4' = "q1_16",
+              'Rank 5' = "q1_17",
+              'Rank 6' = "q1_18",
+              'Rank 7' = "q1_19",   
+              'Rank 8' = "q1_20",
+              'Rank 9' = "q1_21",
+              'Rank 10' = "q1_22")
+ftab = select(text, -duration) %>%
+  flextable() %>%
+  theme_box() %>%
+  fontsize(size=9, part='all')
+ftab
+```
+
+APC = article processing charge.
+
+## Stage 2 - attribute rankings
+
+Below we show the average ranks (dots) and the ranges (horizontal lines). There were 18 attributes to choose from.
+
+```{r, fig.width=8, fig.height=8}
+# calculate summary stats on the ranks
+stats = select(ranks, -duration) %>%
+  pivot_longer(cols = everything()) %>%
+  mutate(question = as.numeric(str_remove(name, pattern='q2_')),
+         question = as.numeric(as.factor(question))) %>% # one question missing
+  group_by(question) %>%
+  summarise(mean = mean(value),
+            min = min(value),
+            max = max(value)) 
+# add labels
+for_plot = ungroup(stats) %>%
+  left_join(labels, by='question') %>%
+  arrange(-mean) %>%
+  mutate(x=1:n()) # ordered row
+n_labels = nrow(labels)
+#
+gplot = ggplot(data = for_plot, aes(x=x, y=mean, ymin=min, ymax=max))+
+  geom_point(size=3, col='darkorange2')+
+  geom_errorbar(size=1.05, width=0, col='darkorange3')+
+  theme_bw()+
+  scale_x_continuous(breaks=1:n_labels, labels=for_plot$labels)+
+  theme(panel.grid.minor = element_blank(),
+        text = element_text(size = 15))+
+  ylab('Rank')+
+  xlab('')+
+  coord_flip()
+gplot
+```
+
+The higher the rank, the more important it was considered.

@@ -1,0 +1,46 @@
+---
+title: "Choice sets for journal DCE"
+output: word_document
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+```{r setup, include=FALSE}
+## called by 2_efficient_design_test.R ##
+
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, error=FALSE, comment='', dpi=400)
+library(flextable)
+```
+
+# Choice 1
+
+```{r}
+choice_1 = filter(examples, choice_situation == 10) %>%
+  group_by(aname) %>%
+  select(choice, levels_text) %>%
+  pivot_wider(values_from = levels_text, names_from = choice) %>%
+  mutate(aname = ifelse(aname=='impf', 'ranking', aname))
+
+#
+ftab = flextable(choice_1) %>%
+  width(j = 1, width = 2.8, unit = "cm") %>%
+  width(j = 2:3, width = 8, unit = "cm") %>%
+  theme_box()
+ftab
+```
+
+# Choice 2
+
+```{r}
+choice_2 = filter(examples, choice_situation == 11) %>%
+  group_by(aname) %>%
+  select(choice, levels_text) %>%
+  pivot_wider(values_from = levels_text, names_from = choice) %>%
+  mutate(aname = ifelse(aname=='impf', 'ranking', aname))
+
+#
+ftab = flextable(choice_2) %>%
+  width(j = 1, width = 2.8, unit = "cm") %>%
+  width(j = 2:3, width = 8, unit = "cm") %>%
+  theme_box()
+ftab
+```
