@@ -2,6 +2,7 @@
 # read in the systematic review data from rayyan
 # Jan 2023
 library(dplyr)
+library(tidyr)
 library(janitor)
 library(stringr)
 TeachingDemos::char2seed('barrow')
@@ -11,6 +12,13 @@ library(openxlsx)
 rayyan = read.csv('rayyan/articles.csv', header=TRUE) %>%
   clean_names() %>%
   select(-key, -day, -issn, -language, -publisher, -location, -abstract, -keywords, -pubmed_id, -pmc_id, -url)
+
+# look at exclusion reasons
+filter(rayyan, str_detect(notes, "Excluded")) %>%
+  separate(notes, into=c(NA, 'reason'), sep='RAYYAN-EXCLUSION-REASONS') %>%
+  group_by(reason) %>%
+  tally() %>%
+  arrange(-n)
 
 # included 
 included = filter(rayyan, str_detect(notes, "Included")) # & str_detect(notes, "Adrian")) 
@@ -36,3 +44,7 @@ writeDataTable(wb, sheet = "Adrian", x = adrian,
 writeDataTable(wb, sheet = "Rangi", x = rangi,
                colNames = TRUE, rowNames = FALSE)
 saveWorkbook(wb, filename, overwrite = TRUE)
+
+# export to text for appendix
+library(rmarkdown)
+render('0_paper_list.Rmd', output_format = 'word_document', output_file = '0_paper_list.docx')

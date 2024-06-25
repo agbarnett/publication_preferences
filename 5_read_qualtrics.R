@@ -108,28 +108,11 @@ data = mutate(data,
               start_date = as.Date(start_date)) %>% # do not need time (just date); time zone is AEST
   select(-duration_in_seconds)
 
-
-## Part 3, calculate number of participants approached ###
-n_sent = 0
-to_load = dir('emails', pattern='2024-03-16') # first pilot sample, links generated on 16-Mar-2024
-for (file in to_load){
-  this_file = paste('emails/', file, sep='')
-  this = read.csv(file = this_file) %>%
-    clean_names() 
-  n_sent = n_sent + nrow(this)
-}
-to_load = dir('emails/second', pattern='2024-04-02') # second pilot sample, links generated on 02-Apr-2024
-for (file in to_load){
-  this_file = paste('emails/second/', file, sep='')
-  this = read.csv(file = this_file) %>%
-    clean_names() 
-  n_sent = n_sent + nrow(this)
-}
-
 ### save ###
 # main version
 comment_questions = c('q25_8_text','q31')
-save(data, labels, n_sent, comment_questions, file='data/5_AnalysisReady.RData')
+data = select(data, -recipient_first_name, -recipient_last_name, -recipient_email) # not needed
+save(data, labels, comment_questions, file='data/5_AnalysisReady.RData')
 # export for Sameera, remove variables with commas
 for_csv = select(data, -contains('recipient'), -'end_date', -'finished', -'progress', -'response_id', -all_of(comment_questions), -q25, -q26_4_text)
 #write.table(for_csv, file='data/tab_data.txt', sep='\t', quote = FALSE, row.names = FALSE) # tab format

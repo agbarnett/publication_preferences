@@ -1,0 +1,429 @@
+---
+title: "Summary of DCE responses (second sample)"
+author: "Adrian Barnett"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, error=FALSE, comment='', dpi=400)
+
+library(dplyr)
+options(dplyr.summarise.inform = FALSE)
+library(janitor)
+library(flextable)
+library(stringr)
+library(readxl)
+library(tidyr)
+library(visdat) # for missing data
+source('99_functions.R')
+
+# graphics set up
+library(ggplot2)
+library(grid)
+library(gridExtra)
+g.theme = theme_bw() + theme(panel.grid.minor = element_blank())
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+# get the data, from 5_read_qualtrics_v2.R
+load('data/5_AnalysisReady_v2.RData')
+load('data/5_sent.RData') # for numbers sent, from 5_emails_sent
+```
+
+## Recruitment
+
+Plot of recruitment over time.
+
+```{r}
+source('6_plot_recruitment_over_time_v2.R')
+print(gplot)
+# for text
+first = min(data$start_date)
+last = max(data$start_date)
+days_recruit = as.numeric(last - first)
+first = format(first, '%d %b %Y')
+last = format(last, '%d %b %Y')
+```
+
+
+## Response rate
+
+```{r}
+# total number sent
+n_sent = filter(sent, sample=='First main') %>% pull(n_sent)
+
+## get data from excel sheet on what happened to emails
+dead_or_rejected = read_excel('emails/dead_emails.xlsx', sheet='dead or rejected') %>% 
+  filter(date >= as.Date('2024-05-07')) %>%
+  select(email) %>% unique() %>% # in case of duplicates
+  nrow()
+dead_or_rejected_p = round(100*dead_or_rejected/n_sent)
+changed = read_excel('emails/dead_emails.xlsx', sheet='changed') %>% 
+  filter(date >= as.Date('2024-05-07')) %>%
+  nrow()
+changed_p = round(100*changed/n_sent)
+opt_out = read_excel('emails/dead_emails.xlsx', sheet='opt out') %>% 
+  filter(date >= as.Date('2024-05-07')) %>%
+  nrow()
+opt_out_p = round(100*opt_out/n_sent)
+out_of_office = read_excel('emails/dead_emails.xlsx', sheet='out of office') %>% 
+  filter(date >= as.Date('2024-05-07')) %>% select(email) %>% unique() %>% nrow() # unique because there could be multiple out of office from the same person
+out_of_office_p = round(100*out_of_office/n_sent) # n_sent from 5_read_qualtrics.R
+# response rate
+response_rate = round(1000*(nrow(data) / (n_sent - dead_or_rejected)))/10
+```
+
+There were `r dead_or_rejected` (`r dead_or_rejected_p`%) dead or rejected emails.
+There were `r changed` (`r changed_p`%) messages with an alternative email for the potential participant.
+There were `r opt_out` (`r opt_out_p`%) people who opted out.
+There were `r out_of_office` (`r out_of_office_p`%) out of office responses.
+
+After excluding the dead emails, the response rate is `r response_rate`%.
+
+## Time taken to answer questions
+
+```{r}
+# Move to down with questionnaire completeness? section on question meta-data??
+stats = summarise(data,
+            Q10 = round(quantile(duration_mins, 0.05)),
+            Q25 = round(quantile(duration_mins, 0.25)),
+            median = round(median(duration_mins)),
+            Q75 = round(quantile(duration_mins, 0.75)),
+            Q90 = round(quantile(duration_mins, 0.95)))
+#
+ftab = flextable(stats) %>%
+  theme_box() %>%
+  autofit()
+ftab
+```
+
+The summary statistics show the time in minutes to complete the online questions. Q[x] is the *x*th percentile.
+
+## Questionnaire progress as a percent
+
+The table below shows the questionnaire progress as a percent, with the results grouped into three categories.
+
+```{r}
+#
+tab = tabyl(data, progress_cat) %>%
+  mutate(percent = percent*100)
+names(tab)[1] = 'Progress %'
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  colformat_double(j=3, digits=0) %>%
+  autofit()
+ftab
+# for text
+finished = sum(data$progress==100)
+finished_p = round(100*finished / nrow(data))
+```
+
+Most respondents completed most of the questions, but there was a second mode who started but did not progress beyond half-way. The number and percent who finished all the questions was `r finished` (`r finished_p`%).
+
+## How easy or difficult was it to understand the hypothetical choices between journals?
+
+```{r}
+tab = mutate(data, q24 = ifelse(is.na(q24), 'Missing', q24)) %>%
+  tabyl(q24) %>%
+  mutate(percent = percent*100,
+         order = case_when(
+           q24 == 'Very difficult' ~ 1,
+           q24 == 'Difficult' ~ 2,
+           q24 == 'Moderate' ~ 3,
+           q24 == 'Easy' ~ 4,
+           q24 == 'Very easy' ~ 5
+         )) %>%
+  filter(n > 0) %>%
+  arrange(order) %>%
+  select(-order)
+names(tab)[1] = 'Difficulty'
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  colformat_double(j=3, digits=0) %>%
+  autofit()
+ftab
+```
+
+## What is your broad research area? 
+
+```{r}
+tab = mutate(data, q25 = ifelse(is.na(q25), 'Missing', q25)) %>%
+  tabyl(q25) %>%
+  mutate(percent = percent*100) %>%
+  filter(n > 0) %>% # remove zero rows
+  arrange(-n)
+names(tab)[1] = 'Broad research area'
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  colformat_double(j=3, digits=0) %>%
+  autofit()
+ftab
+```
+
+### What is your broad research area? (other)
+
+```{r}
+others = unique(data$q25_8_text)
+others = others[!is.na(others)]
+print(others)
+```
+
+
+## Gender
+
+```{r}
+tab = mutate(data, q26 = ifelse(is.na(q26), 'Missing', q26)) %>%
+  tabyl(q26) %>%
+  mutate(percent = percent*100) %>%
+  filter(n > 0)  # remove zero rows
+names(tab)[1] = 'Gender'
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  colformat_double(j=3, digits=0) %>%
+  autofit()
+ftab
+```
+
+## Approximately how many years have you been working in research? Answer in terms of working years
+
+```{r}
+tab  = summarise(data, 
+                 missing = sum(is.na(q27)),
+                 Q1 = round(quantile(q27, 0.25, na.rm=TRUE)),
+                 Median = round(quantile(q27, 0.5, na.rm=TRUE)),
+                 Q3 = round(quantile(q27, 0.75, na.rm=TRUE)))
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  autofit()
+ftab
+```
+
+## How many peer-reviewed publications have you published? Include all papers that you are an author on. Include all types of papers, e.g., research articles, commentaries, case reports, etc.
+
+```{r}
+tab  = summarise(data, 
+                 missing = sum(is.na(q28)),
+                 Q1 = round(quantile(q28, 0.25, na.rm=TRUE)),
+                 Median = round(quantile(q28, 0.5, na.rm=TRUE)),
+                 Q3 = round(quantile(q28, 0.75, na.rm=TRUE)))
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  autofit()
+ftab
+```
+
+## Which country are you currently working in?
+
+```{r}
+tab = mutate(data, q29 = ifelse(is.na(q29), 'Missing', q29)) %>% # replace missing
+  tabyl(q29) %>%
+  mutate(percent = round(percent*100)) %>%
+  arrange(desc(n))
+# combine countries that are under 5 (changed to 1 for now)
+combine_number = 0
+not_small = filter(tab, n > combine_number)
+small = filter(tab, n <= combine_number) %>%
+  summarise(n = sum(n),
+            percent = sum(percent)) %>%
+  mutate(q29 = 'Other')
+tab = bind_rows(not_small, small)
+#
+names(tab)[1] = 'Country'
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  colformat_double(j=3, digits=0) %>%
+  autofit()
+ftab
+```
+
+## Do you have a target number of publications per year? (tick all that apply)
+
+```{r}
+# make tab for tick all
+make_tab = select(data, id, starts_with('q30')) %>%
+  pivot_longer(cols = starts_with('q30')) %>%
+  mutate(answer = !is.na(value))
+freqs = group_by(make_tab, name) %>% # answers to questions
+  summarise(n=n(), r = sum(answer)) %>%
+  ungroup
+no_answer = group_by(make_tab, id) %>% # people who ticked nothing
+  summarise(n=n(), r= sum(answer)) %>%
+  filter(r == 0)%>%
+  ungroup()
+no_answer_frame = data.frame(name = 'No answer', n = nrow(data), r = nrow(no_answer))
+# subtract no answer from frequencies
+freqs = mutate(freqs,
+               n = n - nrow(no_answer))
+tab = bind_rows(freqs, no_answer_frame) %>%
+  mutate(
+               p = round(100*(r / n)),
+               cell = paste(r, ' (', p, '%)', sep=''),
+               label = case_when(
+                 name == 'q30_1' ~ 'Yes, mandatory target from my department or research group',
+               name == 'q30_2' ~ 'Yes, suggested target from my department or research group',
+               name == 'q30_3' ~ 'Yes, I have a personal target',
+               name == 'q30_4' ~ 'No',
+               name == 'No answer' ~ 'No answer')) %>%
+  select(label, cell) %>%
+  rename('Answer' = 'label',
+         'n (%)' = 'cell')
+#
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  autofit()
+ftab
+```
+
+## What is your target number of publications per year? (skip if none)
+
+```{r}
+stats = summarise(data,
+                  N = sum(is.na(q31)),
+            Q10 = round(quantile(q31, 0.05, na.rm = TRUE)),
+            Q25 = round(quantile(q31, 0.25, na.rm = TRUE)),
+            median = round(median(q31, na.rm = TRUE)),
+            Q75 = round(quantile(q31, 0.75, na.rm = TRUE)),
+            Q90 = round(quantile(q31, 0.95, na.rm = TRUE)))
+#
+ftab = flextable(stats) %>%
+  theme_box() %>%
+  autofit()
+ftab
+```
+
+N is the number who gave an answer.
+
+## Do you have any comments on: our questions, or how you select journals?
+
+The comments are ordered by the longest to shortest. 
+
+```{r comments, results='asis'}
+comments = filter(data, 
+                  !is.na(q32),
+                  q32 != '',
+                  !str_detect(tolower(q32), pattern = '^thanks?'),
+                  !str_detect(tolower(q32), pattern = '^na$'),
+                #  !str_detect(tolower(q32), pattern = '^good luck.?'),
+                  !str_detect(tolower(q32), pattern = '^none$'),
+                  !str_detect(tolower(q32), pattern = '^no$'),
+                  !str_detect(tolower(q32), pattern = '^g$'),
+                  !str_detect(tolower(q32), pattern = '^its ok$'),
+                  !str_detect(tolower(q32), pattern = '^no comment|^nil$|^good luck.|^ $'),
+                  !str_detect(tolower(q32), pattern = '^\\.\\.\\.\\.\\.\\.'),
+                  !str_detect(tolower(q32), pattern = '^no further comment'),
+                  !str_detect(tolower(q32), pattern = '^no other comment')
+                  ) %>%
+  mutate(words = str_count(q32, '\\w+'), # word count
+         nchar = nchar(q32),
+         q32 = str_replace_all(q32, '\n', ' ')) # remove carriage returns
+# stats on word counts
+stats = summarise(comments, 
+                  median = round(median(words)), 
+                  min = min(words),
+                  max = max(words))
+#
+comments = arrange(comments, -nchar) %>% # longest to shortest - use for final version
+  select(q32)
+for (k in 1:nrow(comments)){
+  cat('* ', comments$q32[k], '\n', sep='')
+}
+```
+
+The median number of words per comment was `r stats$median` with a range from `r stats$min` to `r stats$max` words.
+
+## Dominant choice set
+
+How many people correctly selected the dominant journal. Missing answers were excluded.
+
+```{r}
+tab = filter(data, !is.na(q3)) %>% # exclude missing
+  tabyl(q3) %>%
+  mutate(percent = round(percent*100),
+         correct = case_when(
+           q3 == 'Journal A' ~ "Yes",
+           q3 == 'Journal B' ~ "No"
+         )) %>%
+  select(correct, n, percent)
+#
+names(tab)[1] = 'Correct answer'
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  colformat_double(j=3, digits=0) %>%
+  autofit()
+ftab
+```
+
+## Re-test 
+
+How many people gave the same answer for the re-test choice set. The rows show the original choice set and the columns the re-test. This analysis excludes missing data.
+
+```{r}
+make_retest = select(data, id, block, q5, q7, q22)
+block_123 = select(make_retest, -q7) %>%
+  filter(block %in% c(1,2,3)) %>% # all same block for version 2
+  rename('original' = 'q5',
+         'retest' = 'q22')
+for_table = filter(block_123, !is.na(original), !is.na(retest))
+
+tab = for_table %>%
+  tabyl(original, retest) 
+#
+names(tab)[1] = 'Original'
+ftab = flextable(tab) %>%
+  theme_box() %>%
+  autofit()
+ftab
+# for text
+agree = round(100*filter(for_table, original == retest) %>% nrow() / nrow(for_table))
+```
+
+The agreement between the original and re-test is `r agree`%.
+
+## Missing data
+
+```{r}
+# remove variables that cannot be missing
+for_missing = select(data, starts_with('q')) %>%
+  select(-q32, -contains('text')) # comments
+# any answer to q30
+for_missing = mutate(for_missing,
+  q30 = case_when(
+    !is.na(q30_1) ~ 1,
+    !is.na(q30_2) ~ 1,
+    !is.na(q30_3) ~ 1,
+    !is.na(q30_4) ~ 1
+  ) ) %>%
+  select(-starts_with('q30_'))
+# for correct ordering of questions in plot
+names = names(for_missing)
+names = names[order(as.numeric(str_remove(names,'q')))]
+for_missing = select(for_missing, names) 
+# add labels
+for_vis = filter(labels, names %in% names(for_missing)) %>%
+  mutate(label_nice = nice_rename(names, version = 2))
+xbreaks = for_vis$names
+xlabels = for_vis$label_nice
+#
+mplot = vis_miss(for_missing, cluster=TRUE) + # ar
+  theme(legend.position = 'bottom',
+        plot.title = element_text(margin = margin(0,0,-10,0))) + # reduce space between title and plot
+  scale_y_continuous(expand=c(0,0)) +
+  ylab('Respondent')
+mplot
+```
+
+In the above plot the rows are respondents and the columns are the questions. Respondents are grouped according to the pattern in their missing data. 
+The amount of item-missing data was small. There was a general increase as the questions increased showing some drop-out (bottom of the plot). Many people did not complete question 31 (publication target number), but this was optional.
+
+The table below shows the question labels.
+
+```{r}
+tab = select(for_vis, names, label_nice) %>%
+  rename('question' = 'names', 'label' = 'label_nice') %>%
+  flextable() %>%
+  theme_alafoli() %>%
+  fontsize(size=9, part='all') %>%
+  autofit()
+tab
+```
+

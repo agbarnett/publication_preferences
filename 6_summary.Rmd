@@ -1,5 +1,5 @@
 ---
-title: "Summary of DCE responses"
+title: "Summary of DCE responses (pilot version of DCE survey)"
 author: "Adrian Barnett"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: word_document
@@ -26,6 +26,7 @@ cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2",
 
 # get the data, from 5_read_qualtrics.R
 load('data/5_AnalysisReady.RData')
+load('data/5_sent.RData') # for numbers sent, from 5_emails_sent
 ```
 
 ## Recruitment
@@ -48,14 +49,26 @@ The total number recruited is `r nrow(data)`. The first participant was recruite
 ## Response rate
 
 ```{r}
+# total number sent (first two combined)
+n_sent = filter(sent, sample!='First main') %>% pull(n_sent) %>% sum()
+
 ## get data from excel sheet on what happened to emails
-dead_or_rejected = read_excel('emails/dead_emails.xlsx', sheet='dead or rejected') %>% nrow()
+dead_or_rejected = read_excel('emails/dead_emails.xlsx', sheet='dead or rejected') %>% 
+  filter(date < as.Date('2024-05-07')) %>%
+  select(email) %>% unique() %>% # in case of duplicates
+  nrow()
 dead_or_rejected_p = round(100*dead_or_rejected/n_sent)
-changed = read_excel('emails/dead_emails.xlsx', sheet='changed') %>% nrow()
+changed = read_excel('emails/dead_emails.xlsx', sheet='changed') %>% 
+  filter(date < as.Date('2024-05-07')) %>%
+  nrow()
 changed_p = round(100*changed/n_sent)
-opt_out = read_excel('emails/dead_emails.xlsx', sheet='opt out') %>% nrow()
+opt_out = read_excel('emails/dead_emails.xlsx', sheet='opt out') %>% 
+  filter(date < as.Date('2024-05-07')) %>%
+  nrow()
 opt_out_p = round(100*opt_out/n_sent)
-out_of_office = read_excel('emails/dead_emails.xlsx', sheet='out of office') %>% select(email) %>% unique() %>% nrow() # unique because there could be multiple out of office from the same person
+out_of_office = read_excel('emails/dead_emails.xlsx', sheet='out of office') %>%
+  filter(date < as.Date('2024-05-07')) %>%
+  select(email) %>% unique() %>% nrow() # unique because there could be multiple out of office from the same person
 out_of_office_p = round(100*out_of_office/n_sent) # n_sent from 5_read_qualtrics.R
 # response rate
 response_rate = round(1000*(nrow(data) / (n_sent - dead_or_rejected)))/10
@@ -93,7 +106,8 @@ The table below shows the questionnaire progress as a percent, with the results 
 
 ```{r}
 #
-tab = tabyl(data, progress_cat) 
+tab = tabyl(data, progress_cat) %>%
+  mutate(percent = percent*100)
 names(tab)[1] = 'Progress %'
 ftab = flextable(tab) %>%
   theme_box() %>%
@@ -283,15 +297,15 @@ The median number of words per comment was `r stats$median` with a range from `r
 
 ## Dominant choice set
 
-How many people correctly selected the dominant journal.
+How many people correctly selected the dominant journal. Missing answers were excluded.
 
 ```{r}
-tab = mutate(data, q3 = ifelse(is.na(q3), 'Missing', q3)) %>% # replace missing
+tab = filter(data, !is.na(q3)) %>% # exclude missing
   tabyl(q3) %>%
   mutate(percent = round(percent*100),
          correct = case_when(
            q3 == 'Journal A' ~ "Yes",
-           q3 == 'Journal A' ~ "No"
+           q3 == 'Journal B' ~ "No"
          )) %>%
   select(correct, n, percent)
 #
@@ -365,4 +379,18 @@ tab = select(for_vis, names, label_nice) %>%
   fontsize(size=9, part='all') %>%
   autofit()
 tab
+```
+
+
+## Alternative plot of missing data ordered by missingness
+
+```{r}
+#
+mplot_alternative = vis_miss(for_missing, cluster = TRUE) +
+  theme(legend.position = 'bottom',
+        plot.title = element_text(margin = margin(0,0,-10,0))) + # reduce space between title and plot
+  scale_y_continuous(expand=c(0,0)) +
+ # scale_x_discrete(breaks = xbreaks)+#, labels = xlabels)+ # not working
+  ylab('Respondent')
+mplot_alternative
 ```

@@ -20,7 +20,7 @@ n_studies = length(unique(long$author))
 n_attributes = length(unique(long$attribute))
 ```
 
-There were `r n_studies` included in this stage of the literature review. They examined `r n_attributes` attributes.
+There were `r n_studies` studies included in this stage of the literature review. They examined `r n_attributes` attributes.
 
 # Frequencies by category
 
@@ -94,18 +94,28 @@ Below is a tile plot showing the attributes mentioned by each paper. The results
 
 ```{r, fig.width=9, fig.height=11}
 #
-long = mutate(long, author = str_replace_all(author, '_', ' '))
+long = mutate(long, 
+              attribute = str_replace(attribute, "^\\w{1}", toupper), # first word should be capital
+              author = str_replace_all(author, '_', ' '))
+# for ordering
+levels = c('Journal','Impact','Paper characteristics','Authors','Other','Activity')
+long = mutate(long, group = factor(group, levels=levels))
 #
-tile = ggplot(data = long, aes(y=attribute, x=author, fill=value, alpha = group))+
+tile = ggplot(data = long, aes(y=attribute, x=author, fill=value))+ #, alpha = group))+ alpha makes shading per group
   geom_tile()+
   scale_fill_manual(NULL, values=c('beige','dark red'))+
   theme_minimal()+
-  theme(legend.position = 'none',
-        axis.text.x = element_text(angle=45, hjust=1, size = 5))+
+  theme(
+    strip.text = element_text(size = 7),
+    panel.spacing = unit(1, "lines"), # gaps between panels
+    plot.margin = margin(t = 0, r = 0, b = 0, l = 0, unit = "pt"),
+    legend.position = 'none',
+        panel.grid.minor = element_blank())+
+  scale_x_discrete(labels=NULL) + # No point showing papers, too small
   facet_grid(rows = vars(group), scales = "free", space = "free") +
   xlab('')+
   ylab('')
 tile
-ggsave(filename = 'figures/literature_review.jpg', device = 'jpeg', plot = tile, units = 'in', width=9, height=12, dpi=400)
-ggsave(filename = 'figures/literature_review.eps', device = 'eps', plot = tile, width=9, height=12) # for protocol
+ggsave(filename = 'figures/literature_review.jpg', device = 'jpeg', plot = tile, units = 'in', width=9, height=12, dpi=600)
+#ggsave(filename = 'figures/literature_review.eps', device = 'eps', plot = tile, width=9, height=12) # for protocol
 ```

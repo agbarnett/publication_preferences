@@ -1,5 +1,5 @@
 # 1_flow_literature.R
-# flow chart for literature
+# flow chart for literature - not complete
 # Jan 2023
 library(diagram)
 library(dplyr)
@@ -77,7 +77,7 @@ M[9, 7] = "' '" # invalid email
 tcol = rep('black', n.labels)
 
 ## make figure 
-jpeg('figures/consort.flow.jpg', width=7.5, height=7, units='in', res=400, quality = 100)
+jpeg('figures/1_consort_flow_literature.jpg', width=7.5, height=7, units='in', res=400, quality = 100)
 par(mai=c(0,0.04,0.04,0.04))
 plotmat(M, pos = pos, name = labels, lwd = 1, shadow.size=0, curve=0,
         box.lwd = 2, cex.txt = 1, box.size = frame$box.size, box.col=frame$box.col,

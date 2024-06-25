@@ -26,6 +26,5 @@ long = pivot_longer(data = data,
 long = filter(long,
               !str_detect(author, '^ioannidis|^foss|^dore|^chowdhury'))
 
-
 # save
 save(long, file='data/0_literature.RData')
