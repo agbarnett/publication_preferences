@@ -9,6 +9,8 @@ The `figures` folder contains the graphical summaries of the data collection and
 
 The `.R` files are presented in running order from `0_` through to `7_`, with `99_` for functions and other testing.
 
+The mixed multinomial logit models and latent class models were run in NGENE and the code is in `NGene & Nlogit codes.docx`.
+
 ### Protocol
 
 The study protocol, participant information sheet, and survey questions are available on the [Open Science Framework](https://osf.io/p9guj/).
