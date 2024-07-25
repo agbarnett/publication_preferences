@@ -1,5 +1,7 @@
 # Publication preferences
 
+[![DOI](https://zenodo.org/badge/785977608.svg)](https://zenodo.org/doi/10.5281/zenodo.12814359)
+
 A project aimed at eliciting the preferences of health and medical researchers when they select journals and publish their results. We aimed to describe some of the trade-offs that researchers are willing to make to gain publications.
 
 The `rdata` folder contains the survey data and data dictionaries in Excel format. 
