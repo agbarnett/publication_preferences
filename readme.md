@@ -2,13 +2,14 @@
 
 A project aimed at eliciting the preferences of health and medical researchers when they select journals and publish their results. We aimed to describe some of the trade-offs that researchers are willing to make to gain publications.
 
-The `readme` folder contains the survey data and data dictionaries in Excel format. 
+The `rdata` folder contains the survey data and data dictionaries in Excel format. 
+The `figures` folder contains the graphical summaries of the data collection and results, and a subfolder of `qualtrics` with the choice tasks. 
 
-### Version information
+### Protocol
 
 The study protocol, participant information sheet, and survey questions are available on the [Open Science Framework](https://osf.io/p9guj/).
 
-### Version information
+### Version information for R and R packages
 
 ```
 R version 4.3.1 (2023-06-16 ucrt)
